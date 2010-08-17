@@ -4,7 +4,7 @@ import flydra.kalman.data_packets as data_packets
 import flydra.common_variables
 import flydra.geom as geom
 import Pyro.core
-
+import pickle
 import VisionEgg
 VisionEgg.start_default_logging(); VisionEgg.watch_exceptions()
 
@@ -18,6 +18,9 @@ from pygame.locals import QUIT,KEYDOWN,MOUSEBUTTONDOWN
 import OpenGL.GL as gl
 import FlatRect
 import VR_math
+
+import enthought.mayavi.mlab as mlab 
+import matplotlib.pyplot as plt
 
 import os
 import time
@@ -61,8 +64,13 @@ def get_wall_dict( show, screen, corners_3d, corners_2d,
     result = dict(screen_data=proj_math,
                   cam_viewport=cam_viewport)
     
-    framebuffer_copy_texture = Texture(
-        texels=screen.get_framebuffer_as_image(format=gl.GL_RGBA) )
+    #framebuffer_copy_texture = Texture(
+    #    texels=screen.get_framebuffer_as_image(format=gl.GL_RGBA) )
+        
+    filename ='/home/floris/20070424_127.jpg'
+    framebuffer_copy_texture = Texture(filename)
+
+        
     screen_rect = TextureStimulus3D(
         texture = framebuffer_copy_texture,
         shrink_texture_ok=True,
@@ -115,23 +123,31 @@ def main(live_demo = False, # if True, never leave VR mode
 
     vr_walls = {}
     
-    
         
     ########## WALL 2 #################
     if 1:
         # order: LL, UL, UR, LR
         # -y wall
+            
+        # load data file
+        filename = '/home/floris/data/calibrations/projector/flydra_data_20100816_141544'
+        fd = open( filename, mode='r')
+        data = pickle.load(fd)
+
+        # find best fit plane
+        C = VR_math.ensure_coplanar(data,also_ensure_parallel=True)
+
         corners_3d = [
             # LL
-            (0.43654656410217285, -0.1443936675786972, 0.025561617687344551),
+            (C[1,0], C[1,1], C[1,2]),
             # UL
-            (0.4312690794467926, -0.14406071603298187, 0.27475747466087341),
+            (C[0,0], C[0,1], C[0,2]),
             # UR
-            (0.2, -0.14475925266742706, 0.23684273660182953), #-0.49650067090988159
+            (C[2,0], C[2,1], C[2,2]), #-0.49650067090988159
             # LR
-            (0.2, -0.14341457188129425, -0.018632272258400917), #-0.52826571464538574
+            (C[3,0], C[3,1], C[3,2]), #-0.52826571464538574
             ]
-
+        
         corners_2d = [
             # LL
             (513, 1),
@@ -155,20 +171,30 @@ def main(live_demo = False, # if True, never leave VR mode
     if 1:
         # order: LL, UL, UR, LR
         # -y wall
-        corners_3d = [
-            # LL = 1.LR
-            (0.42773362994194031, 0.14023984968662262, 0.022966273128986359),
-            # UL = 1.UR
-            (0.42402097582817078, 0.14513731002807617, 0.25622266530990601),
-            # UR = 2.UL
-            (0.4312690794467926, -0.14406071603298187, 0.27475747466087341),
-            # LR = 2.LL
-            (0.43654656410217285, -0.1443936675786972, 0.025561617687344551),
-            ]
+            
+        # load data file
+        filename =  '/home/floris/data/calibrations/projector/flydra_data_20100816_141500'
+        fd = open( filename, mode='r')
+        data = pickle.load(fd)
 
+        # find best fit plane
+        C = VR_math.ensure_coplanar(data,also_ensure_parallel=False)
+        #C = np.random.random(C.shape)
+
+        corners_3d = [
+            # LL
+            (C[3,0], C[3,1], C[3,2]),
+            # UL
+            (C[2,0], C[2,1], C[2,2]),
+            # UR
+            (C[0,0], C[0,1], C[0,2]), #-0.49650067090988159
+            # LR
+            (C[1,0], C[1,1], C[1,2]), #-0.52826571464538574
+            ]
+            
+        
         corners_2d = [
             # LL
-            #(81, 573), # good 3D number for this point, but not directly under UL
             (1,50),
             # UL
             (1,620),
@@ -217,7 +243,7 @@ def main(live_demo = False, # if True, never leave VR mode
         screen.clear() # clear screen
         wall['cam_viewport'].draw()
 
-
+    if 0:
         framebuffer_texture_object = wall['framebuffer_texture_object']
 
         # copy screen back-buffer to texture
